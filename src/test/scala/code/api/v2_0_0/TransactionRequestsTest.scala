@@ -1,7 +1,7 @@
 package code.api.v2_0_0
 
 import code.api.util.ErrorMessages
-import code.api.{ErrorMessage, DefaultUsers, ServerSetupWithTestData}
+import code.api.{DefaultUsers, ErrorMessage, ServerSetupWithTestData}
 import code.api.util.APIUtil.OAuth._
 import code.api.v1_2_1.AmountOfMoneyJsonV121
 import code.api.v1_4_0.JSONFactory1_4_0.{ChallengeAnswerJSON, TransactionRequestAccountJsonV140}
@@ -13,6 +13,7 @@ import net.liftweb.json.Serialization.write
 import net.liftweb.util.Props
 import org.scalatest.Tag
 import code.api.util.ApiRole._
+import net.liftweb.common.Full
 
 class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers with V200ServerSetup {
 
@@ -25,7 +26,9 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       accounts.foldLeft(0)((accumulator, account) => {
         //TODO: might be nice to avoid direct use of the connector, but if we use an api call we need to do
         //it with the correct account owners, and be sure that we don't even run into pagination problems
-        accumulator + Connector.connector.vend.getTransactions(account.bankId, account.accountId).get.size
+        accumulator + (Connector.connector.vend.getTransactions(account.bankId, account.accountId) match {
+          case Full(t) => t.size
+        })
       })
     }
 
@@ -44,7 +47,7 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         addEntitlement(bankId.value, authuser3.userId, CanCreateAnyTransactionRequest.toString)
         Then("We add entitlement to user3")
         val hasEntitlement = code.api.util.APIUtil.hasEntitlement(bankId.value, authuser3.userId, CanCreateAnyTransactionRequest)
-        hasEntitlement should equal(true)
+        hasEntitlement must equal(true)
 
         def getFromAccount: BankAccount = {
           BankAccount(bankId, accountId1).getOrElse(fail("couldn't get from account"))
@@ -79,8 +82,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@(user3)
         var response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
         println(response.body)
 
@@ -89,8 +92,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have some new transaction id")
-        transRequestId should not equal ("")
+        Then("We must have some new transaction id")
+        transRequestId must not equal ("")
 
         val responseBody = response.body
 
@@ -99,28 +102,28 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        status should equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        status must equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
-        // Challenge should be null (none required)
+        // Challenge must be null (none required)
         var challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         var transaction_ids = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
         //If user does not have access to owner or other view - they won’t be able to view transaction. Hence they can’t see the transaction_id
-        transaction_ids should not equal("")
+        transaction_ids must not equal("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         val transactionRequests = response.body.children
-        transactionRequests.size should not equal(0)
+        transactionRequests.size must not equal(0)
 
 
         val tr2Body = response.body
@@ -130,22 +133,22 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should not equal("")
+        transaction_ids must not equal("")
 
         //make sure that we also get no challenges back from this url (after getting from db)
         challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         //check that we created a new transaction (since no challenge)
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         val transactions = response.body.children
 
-        transactions.size should equal(1)
+        transactions.size must equal(1)
 
         //check that the description has been set
         println(response.body)
@@ -153,27 +156,27 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")*/
+        description must not equal ("")*/
 
         //check that the balances have been properly decreased/increased (since we handle that logic for sandbox accounts at least)
         //(do it here even though the payments test does test makePayment already)
         val rate = fx.exchangeRate (fromAccount.currency, toAccount.currency)
         val convertedAmount = fx.convert(amt, rate)
         val fromAccountBalance = getFromAccount.balance
-        And("the from account should have a balance smaller by the amount specified to pay")
-        fromAccountBalance should equal((beforeFromBalance - convertedAmount))
+        And("the from account must have a balance smaller by the amount specified to pay")
+        fromAccountBalance must equal((beforeFromBalance - convertedAmount))
 
         /*
-        And("the newest transaction for the account receiving the payment should have the proper amount")
-        newestToAccountTransaction.details.value.amount should equal(amt.toString)
+        And("the newest transaction for the account receiving the payment must have the proper amount")
+        newestToAccountTransaction.details.value.amount must equal(amt.toString)
         */
 
-        And("the account receiving the payment should have a new balance plus the amount paid")
+        And("the account receiving the payment must have a new balance plus the amount paid")
         val toAccountBalance = getToAccount.balance
-        toAccountBalance should equal(beforeToBalance + convertedAmount)
+        toAccountBalance must equal(beforeToBalance + convertedAmount)
 
-        And("there should now be 2 new transactions in the database (one for the sender, one for the receiver")
-        transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+        And("there must now be 2 new transactions in the database (one for the sender, one for the receiver")
+        transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
       }
     }
 
@@ -223,16 +226,16 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@(user1)
         var response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
         //created a transaction request, check some return values. As type is SANDBOX_TAN and value is < 1000, we expect no challenge
         val transRequestId: String = (response.body \ "id") match {
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have some new transaction id")
-        transRequestId should not equal ("")
+        Then("We must have some new transaction id")
+        transRequestId must not equal ("")
 
         val responseBody = response.body
 
@@ -241,27 +244,27 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        status should equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        status must equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
-        // Challenge should be null (none required)
+        // Challenge must be null (none required)
         var challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         var transaction_ids = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should not equal("")
+        transaction_ids must not equal("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         val transactionRequests = response.body.children
-        transactionRequests.size should not equal(0)
+        transactionRequests.size must not equal(0)
 
 
         val tr2Body = response.body
@@ -271,49 +274,49 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should not equal("")
+        transaction_ids must not equal("")
 
         //make sure that we also get no challenges back from this url (after getting from db)
         challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         //check that we created a new transaction (since no challenge)
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         val transactions = response.body.children
 
-        transactions.size should equal(1)
+        transactions.size must equal(1)
 
         //check that the description has been set
         val description = (((response.body \ "transactions")(0) \ "details") \ "description") match {
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")
+        description must not equal ("")
 
         //check that the balances have been properly decreased/increased (since we handle that logic for sandbox accounts at least)
         //(do it here even though the payments test does test makePayment already)
         val rate = fx.exchangeRate (fromAccount.currency, toAccount.currency)
         val convertedAmount = fx.convert(amt, rate)
         val fromAccountBalance = getFromAccount.balance
-        And("the from account should have a balance smaller by the amount specified to pay")
-        fromAccountBalance should equal((beforeFromBalance - convertedAmount))
+        And("the from account must have a balance smaller by the amount specified to pay")
+        fromAccountBalance must equal((beforeFromBalance - convertedAmount))
 
         /*
-        And("the newest transaction for the account receiving the payment should have the proper amount")
-        newestToAccountTransaction.details.value.amount should equal(amt.toString)
+        And("the newest transaction for the account receiving the payment must have the proper amount")
+        newestToAccountTransaction.details.value.amount must equal(amt.toString)
         */
 
-        And("the account receiving the payment should have a new balance plus the amount paid")
+        And("the account receiving the payment must have a new balance plus the amount paid")
         val toAccountBalance = getToAccount.balance
-        toAccountBalance should equal(beforeToBalance + convertedAmount)
+        toAccountBalance must equal(beforeToBalance + convertedAmount)
 
-        And("there should now be 2 new transactions in the database (one for the sender, one for the receiver")
-        transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+        And("there must now be 2 new transactions in the database (one for the sender, one for the receiver")
+        transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
       }
     }
 
@@ -349,16 +352,16 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         val request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@(user2)
         val response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 400 created code")
-        response.code should equal(400)
+        Then("we must get a 400 created code")
+        response.code must equal(400)
 
         //created a transaction request, check some return values. As type is SANDBOX_TAN and value is < 1000, we expect no challenge
         val error: String = (response.body \ "error") match {
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
-        error should equal (ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        Then("We must have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        error must equal (ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
 
       }
 
@@ -380,7 +383,7 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
 
         Then("We add entitlement to user3")
         val hasEntitlement = code.api.util.APIUtil.hasEntitlement(bankId2.value, authuser3.userId, CanCreateAnyTransactionRequest)
-        hasEntitlement should equal(true)
+        hasEntitlement must equal(true)
 
         def getFromAccount: BankAccount = {
           BankAccount(bankId, accountId1).getOrElse(fail("couldn't get from account"))
@@ -409,16 +412,16 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         val request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@ (user3)
         val response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 400 created code")
-        response.code should equal(400)
+        Then("we must get a 400 created code")
+        response.code must equal(400)
 
         //created a transaction request, check some return values. As type is SANDBOX_TAN and value is < 1000, we expect no challenge
         val error: String = (response.body \ "error") match {
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
-        error should equal (ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        Then("We must have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        error must equal (ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
 
 
       }
@@ -489,8 +492,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@(user1)
         var response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
 
         val responseBody = response.body
@@ -500,65 +503,65 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have some new transaction request id")
-        transRequestId should not equal ("")
+        Then("We must have some new transaction request id")
+        transRequestId must not equal ("")
 
         val status: String = (response.body \ "status") match {
           case JString(i) => i
           case _ => ""
         }
-        status should equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        status must equal (code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
 
-        Then("we should not have a challenge object")
+        Then("we must not have a challenge object")
         var challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         var transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should not equal("")
+        transaction_id must not equal("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         val transactionRequests = response.body.children
-        transactionRequests.size should not equal(0)
+        transactionRequests.size must not equal(0)
 
         //check transaction_ids again
         transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should not equal("")
+        transaction_id must not equal("")
 
         //make sure that we also get no challenges back from this url (after getting from db)
         challenge = (response.body \ "challenge").children
-        challenge.size should equal(0)
+        challenge.size must equal(0)
 
         //check that we created a new transaction (since no challenge)
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
 
         val fromTransactions = response.body.children
 
-        fromTransactions.size should equal(1)
+        fromTransactions.size must equal(1)
 
         //check that the description has been set
         val description = (((response.body \ "transactions")(0) \ "details") \ "description") match {
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")
+        description must not equal ("")
 
         // Transaction Value
         val actualFromAmount  = (((response.body \ "transactions")(0) \ "details") \ "value" \ "amount") match {
@@ -567,71 +570,71 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         }
 
         // We are debiting the amount
-        amt should equal (-1 * BigDecimal(actualFromAmount))
+        amt must equal (-1 * BigDecimal(actualFromAmount))
 
         // New Balance
         val actualFromBalance  = (((response.body \ "transactions")(0) \ "details") \ "new_balance" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedFromNewBalance should equal (BigDecimal(actualFromBalance))
+        expectedFromNewBalance must equal (BigDecimal(actualFromBalance))
 
         //check that we created a new transaction (since no challenge)
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / toAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
 
         val toTransactions = response.body.children
 
-        toTransactions.size should equal(1)
+        toTransactions.size must equal(1)
 
         //check that the description has been set
         val toDescription = (((response.body \ "transactions")(0) \ "details") \ "description") match {
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")
+        description must not equal ("")
 
         // Transaction Value
         val actualToAmount  = (((response.body \ "transactions")(0) \ "details") \ "value" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedAmtTo.setScale(2, BigDecimal.RoundingMode.HALF_UP) should equal (BigDecimal(actualToAmount))
+        expectedAmtTo.setScale(2, BigDecimal.RoundingMode.HALF_UP) must equal (BigDecimal(actualToAmount))
 
         // New Balance
         val actualToBalance  = (((response.body \ "transactions")(0) \ "details") \ "new_balance" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedToNewBalance.setScale(2, BigDecimal.RoundingMode.HALF_UP)  should equal (BigDecimal(actualToBalance))
+        expectedToNewBalance.setScale(2, BigDecimal.RoundingMode.HALF_UP)  must equal (BigDecimal(actualToBalance))
 
 
         val rate = fx.exchangeRate (fromAccount.currency, toAccount.currency)
         val convertedAmount = fx.convert(amt, rate)
         val fromAccountBalance = getFromAccount.balance
-        And("the from account should have a balance smaller by the original amount specified to pay")
-        fromAccountBalance should equal(beforeFromBalance - amt)
+        And("the from account must have a balance smaller by the original amount specified to pay")
+        fromAccountBalance must equal(beforeFromBalance - amt)
 
 
         //val fromAccountBalance = getFromAccount.balance
-        //And("the from account should have a balance smaller by the amount specified to pay")
-        //fromAccountBalance should equal((beforeFromBalance - amt))
+        //And("the from account must have a balance smaller by the amount specified to pay")
+        //fromAccountBalance must equal((beforeFromBalance - amt))
 
         /*
-        And("the newest transaction for the account receiving the payment should have the proper amount")
-        newestToAccountTransaction.details.value.amount should equal(amt.toString)
+        And("the newest transaction for the account receiving the payment must have the proper amount")
+        newestToAccountTransaction.details.value.amount must equal(amt.toString)
         */
 
-        And("the account receiving the payment should have a new balance plus the amount paid")
+        And("the account receiving the payment must have a new balance plus the amount paid")
         val toAccountBalance = getToAccount.balance
-        toAccountBalance should equal(beforeToBalance + convertedAmount)
+        toAccountBalance must equal(beforeToBalance + convertedAmount)
 
-        And("there should now be 2 new transactions in the database (one for the sender, one for the receiver)")
-        transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+        And("there must now be 2 new transactions in the database (one for the sender, one for the receiver)")
+        transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
       }
     }
 
@@ -672,7 +675,7 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
 
         //2. create transaction request to to-account with one of the possible challenges
 
-        //amount over 1000 €, so should trigger challenge request
+        //amount over 1000 €, so must trigger challenge request
         val amt = BigDecimal("1250.00")
         val bodyValue = AmountOfMoneyJsonV121("EUR", amt.toString())
         val transactionRequestBody = TransactionRequestBodyJsonV200(
@@ -684,55 +687,55 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@ (user1)
         var response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
         //ok, created a transaction request, check some return values. As type is SANDBOX_TAN but over 100€, we expect a challenge
         val transRequestId: String = (response.body \ "id") match {
           case JString(i) => i
           case _ => ""
         }
-        transRequestId should not equal ("")
+        transRequestId must not equal ("")
 
         var status: String = (response.body \ "status") match {
           case JString(i) => i
           case _ => ""
         }
-        status should equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
+        status must equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
 
         var transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should equal ("")
+        transaction_id must equal ("")
 
         var challenge = (response.body \ "challenge").children
-        challenge.size should not equal(0)
+        challenge.size must not equal(0)
 
         val challenge_id = (response.body \ "challenge" \ "id") match {
           case JString(s) => s
           case _ => ""
         }
-        challenge_id should not equal("")
+        challenge_id must not equal("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@ (user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         var transactionRequests = response.body.children
 
-        transactionRequests.size should equal(1)
+        transactionRequests.size must equal(1)
         transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should equal ("")
+        transaction_id must equal ("")
 
         challenge = (response.body \ "challenge").children
-        challenge.size should not equal(0)
+        challenge.size must not equal(0)
 
         //3. answer challenge and check if transaction is being created
         //call answerTransactionRequestChallenge, give a false answer
@@ -740,8 +743,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests" / transRequestId / "challenge").POST <@ (user1)
         response = makePostRequest(request, write(answerJson))
-        Then("we should get a 400 bad request code")
-        response.code should equal(400)
+        Then("we must get a 400 bad request code")
+        response.code must equal(400)
 
         //TODO: check if allowed_attempts is decreased
 
@@ -750,59 +753,59 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests" / transRequestId / "challenge").POST <@ (user1)
         response = makePostRequest(request, write(answerJson))
-        Then("we should get a 202 accepted code")
-        response.code should equal(202)
+        Then("we must get a 202 accepted code")
+        response.code must equal(202)
 
         //check if returned data includes new transaction's id
         status = (response.body \ "status") match {
           case JString(i) => i
           case _ => ""
         }
-        status should equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        status must equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
         transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should not equal ("")
+        transaction_id must not equal ("")
 
         //call getTransactionRequests, check that we really created a transaction
         request = (v1_4Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@ (user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         transactionRequests = response.body.children
 
-        transactionRequests.size should equal(1)
+        transactionRequests.size must equal(1)
         transaction_id = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_id should not equal ("")
+        transaction_id must not equal ("")
 
         challenge = (response.body \ "challenge").children
-        challenge.size should not equal(0)
+        challenge.size must not equal(0)
 
         //check that the balances have been properly decreased/increased (since we handle that logic for sandbox accounts at least)
         //(do it here even though the payments test does test makePayment already)
 
         val fromAccountBalance = getFromAccount.balance
-        And("the from account should have a balance smaller by the amount specified to pay")
-        fromAccountBalance should equal((beforeFromBalance - amt))
+        And("the from account must have a balance smaller by the amount specified to pay")
+        fromAccountBalance must equal((beforeFromBalance - amt))
 
         /*
-        And("the newest transaction for the account receiving the payment should have the proper amount")
-        newestToAccountTransaction.details.value.amount should equal(amt.toString)
+        And("the newest transaction for the account receiving the payment must have the proper amount")
+        newestToAccountTransaction.details.value.amount must equal(amt.toString)
         */
 
-        And("the account receiving the payment should have a new balance plus the amount paid")
+        And("the account receiving the payment must have a new balance plus the amount paid")
         val toAccountBalance = getToAccount.balance
-        toAccountBalance should equal(beforeToBalance + amt)
+        toAccountBalance must equal(beforeToBalance + amt)
 
-        And("there should now be 2 new transactions in the database (one for the sender, one for the receiver")
-        transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+        And("there must now be 2 new transactions in the database (one for the sender, one for the receiver")
+        transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
       }
     }
 
@@ -873,57 +876,57 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests").POST <@(user1)
         var response = makePostRequest(request, write(transactionRequestBody))
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
         //created a transaction request, check some return values. As type is SANDBOX_TAN, we expect no challenge
         val transRequestId: String = (response.body \ "id") match {
           case JString(i) => i
           case _ => ""
         }
-        Then("We should have some new transaction id")
-        transRequestId should not equal ("")
+        Then("We must have some new transaction id")
+        transRequestId must not equal ("")
 
         var status: String = (response.body \ "status") match {
           case JString(i) => i
           case _ => ""
         }
-        status should equal (code.transactionrequests.TransactionRequests.STATUS_INITIATED)
+        status must equal (code.transactionrequests.TransactionRequests.STATUS_INITIATED)
 
         var transaction_ids = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should equal("")
+        transaction_ids must equal("")
 
         var challenge = (response.body \ "challenge").children
-        challenge.size should not equal(0)
+        challenge.size must not equal(0)
 
         val challenge_id = (response.body \ "challenge" \ "id") match {
           case JString(s) => s
           case _ => ""
         }
-        challenge_id should not equal("")
+        challenge_id must not equal("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@ (user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         var transactionRequests = response.body.children
 
-        transactionRequests.size should equal(1)
+        transactionRequests.size must equal(1)
         transaction_ids = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should equal ("")
+        transaction_ids must equal ("")
 
-        //Then("we should have a challenge object")
+        //Then("we must have a challenge object")
         //challenge = (response.body \ "challenge").children
-        // TODO fix this path challenge.size should not equal(0)
+        // TODO fix this path challenge.size must not equal(0)
 
         //3. answer challenge and check if transaction is being created
         //call answerTransactionRequestChallenge, give a false answer
@@ -931,8 +934,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests" / transRequestId / "challenge").POST <@ (user1)
         response = makePostRequest(request, write(answerJson))
-        Then("we should get a 400 bad request code")
-        response.code should equal(400)
+        Then("we must get a 400 bad request code")
+        response.code must equal(400)
 
         //TODO: check if allowed_attempts is decreased
 
@@ -941,62 +944,62 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-request-types" / "SANDBOX_TAN" / "transaction-requests" / transRequestId / "challenge").POST <@ (user1)
         response = makePostRequest(request, write(answerJson))
-        Then("we should get a 202 accepted code")
-        response.code should equal(202)
+        Then("we must get a 202 accepted code")
+        response.code must equal(202)
 
         //check if returned data includes new transaction's id
         status = (response.body \ "status") match {
           case JString(i) => i
           case _ => ""
         }
-        status should equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        status must equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
         transaction_ids = (response.body \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should not equal ("")
+        transaction_ids must not equal ("")
 
         //call getTransactionRequests, check that we really created a transaction request
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transaction-requests").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
         transactionRequests = response.body.children
 
-        transactionRequests.size should not equal(0)
+        transactionRequests.size must not equal(0)
 
         //check transaction_ids again
         transaction_ids = (response.body \ "transaction_requests_with_charges" \ "transaction_ids") match {
           case JString(i) => i
           case _ => ""
         }
-        transaction_ids should not equal("")
+        transaction_ids must not equal("")
 
         //make sure that we also get no challenges back from this url (after getting from db)
         // challenge = (response.body \ "challenge").children
-        // TODO challenge.size should not equal(0)
+        // TODO challenge.size must not equal(0)
 
         //check that we created a new transaction (since no challenge)
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / fromAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
 
         val fromTransactions = response.body.children
 
-        fromTransactions.size should equal(1)
+        fromTransactions.size must equal(1)
 
         //check that the description has been set
         val description = (((response.body \ "transactions")(0) \ "details") \ "description") match {
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")
+        description must not equal ("")
 
         // Transaction Value
         val actualFromAmount  = (((response.body \ "transactions")(0) \ "details") \ "value" \ "amount") match {
@@ -1005,71 +1008,71 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         }
 
         // We are debiting the amount
-        amt should equal (-1 * BigDecimal(actualFromAmount))
+        amt must equal (-1 * BigDecimal(actualFromAmount))
 
         // New Balance
         val actualFromBalance  = (((response.body \ "transactions")(0) \ "details") \ "new_balance" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedFromNewBalance should equal (BigDecimal(actualFromBalance))
+        expectedFromNewBalance must equal (BigDecimal(actualFromBalance))
 
         //check that we created a new transaction
         request = (v2_0Request / "banks" / testBank.bankId.value / "accounts" / toAccount.accountId.value /
           "owner" / "transactions").GET <@(user1)
         response = makeGetRequest(request)
 
-        Then("we should get a 200 ok code")
-        response.code should equal(200)
+        Then("we must get a 200 ok code")
+        response.code must equal(200)
 
         val toTransactions = response.body.children
 
-        toTransactions.size should equal(1)
+        toTransactions.size must equal(1)
 
         //check that the description has been set
         val toDescription = (((response.body \ "transactions")(0) \ "details") \ "description") match {
           case JString(i) => i
           case _ => ""
         }
-        description should not equal ("")
+        description must not equal ("")
 
         // Transaction Value
         val actualToAmount  = (((response.body \ "transactions")(0) \ "details") \ "value" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedAmtTo.setScale(2, BigDecimal.RoundingMode.HALF_UP) should equal (BigDecimal(actualToAmount))
+        expectedAmtTo.setScale(2, BigDecimal.RoundingMode.HALF_UP) must equal (BigDecimal(actualToAmount))
 
         // New Balance
         val actualToBalance  = (((response.body \ "transactions")(0) \ "details") \ "new_balance" \ "amount") match {
           case JString(i) => i
           case _ => ""
         }
-        expectedToNewBalance.setScale(2, BigDecimal.RoundingMode.HALF_UP)  should equal (BigDecimal(actualToBalance))
+        expectedToNewBalance.setScale(2, BigDecimal.RoundingMode.HALF_UP)  must equal (BigDecimal(actualToBalance))
 
 
         val rate = fx.exchangeRate (fromAccount.currency, toAccount.currency)
         val convertedAmount = fx.convert(amt, rate)
         val fromAccountBalance = getFromAccount.balance
-        And("the from account should have a balance smaller by the original amount specified to pay")
-        fromAccountBalance should equal(beforeFromBalance - amt)
+        And("the from account must have a balance smaller by the original amount specified to pay")
+        fromAccountBalance must equal(beforeFromBalance - amt)
 
 
         //val fromAccountBalance = getFromAccount.balance
-        //And("the from account should have a balance smaller by the amount specified to pay")
-        //fromAccountBalance should equal((beforeFromBalance - amt))
+        //And("the from account must have a balance smaller by the amount specified to pay")
+        //fromAccountBalance must equal((beforeFromBalance - amt))
 
         /*
-        And("the newest transaction for the account receiving the payment should have the proper amount")
-        newestToAccountTransaction.details.value.amount should equal(amt.toString)
+        And("the newest transaction for the account receiving the payment must have the proper amount")
+        newestToAccountTransaction.details.value.amount must equal(amt.toString)
         */
 
-        And("the account receiving the payment should have a new balance plus the amount paid")
+        And("the account receiving the payment must have a new balance plus the amount paid")
         val toAccountBalance = getToAccount.balance
-        toAccountBalance should equal(beforeToBalance + convertedAmount)
+        toAccountBalance must equal(beforeToBalance + convertedAmount)
 
-        And("there should now be 2 new transactions in the database (one for the sender, one for the receiver)")
-        transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+        And("there must now be 2 new transactions in the database (one for the sender, one for the receiver)")
+        transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
       }
     }
 
@@ -1104,15 +1107,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user2)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for each account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+      And("the number of transactions for each account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-      And("the balances of each account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
-      beforeToBalance should equal(getToAccount.balance)
+      And("the balances of each account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
+      beforeToBalance must equal(getToAccount.balance)
     }
 
     scenario("we can't make a payment without an oauth user", Payments) {
@@ -1144,15 +1147,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, None)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for each account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+      And("the number of transactions for each account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-      And("the balances of each account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
-      beforeToBalance should equal(getToAccount.balance)
+      And("the balances of each account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
+      beforeToBalance must equal(getToAccount.balance)
     }
 
     scenario("we can't make a payment of zero units of currency", Payments) {
@@ -1186,15 +1189,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for each account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+      And("the number of transactions for each account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-      And("the balances of each account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
-      beforeToBalance should equal(getToAccount.balance)
+      And("the balances of each account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
+      beforeToBalance must equal(getToAccount.balance)
     }
 
     scenario("we can't make a payment with a negative amount of money", Payments) {
@@ -1229,15 +1232,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for each account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+      And("the number of transactions for each account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-      And("the balances of each account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
-      beforeToBalance should equal(getToAccount.balance)
+      And("the balances of each account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
+      beforeToBalance must equal(getToAccount.balance)
     }
 
     scenario("we can't make a payment to an account that doesn't exist", Payments) {
@@ -1264,14 +1267,14 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(bankId.value, "ACCOUNTTHATDOESNOTEXIST232321321", amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for the sender's account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount))
+      And("the number of transactions for the sender's account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount))
 
-      And("the balance of the sender's account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
+      And("the balance of the sender's account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
     }
 
     scenario("we can't make a payment between accounts with different currencies", Payments) {
@@ -1304,15 +1307,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
       val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-      Then("we should get a 400")
-      postResult.code should equal(400)
+      Then("we must get a 400")
+      postResult.code must equal(400)
 
-      And("the number of transactions for each account should remain unchanged")
-      totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+      And("the number of transactions for each account must remain unchanged")
+      totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-      And("the balances of each account should remain unchanged")
-      beforeFromBalance should equal(getFromAccount.balance)
-      beforeToBalance should equal(getToAccount.balance)
+      And("the balances of each account must remain unchanged")
+      beforeFromBalance must equal(getFromAccount.balance)
+      beforeToBalance must equal(getToAccount.balance)
     } */
   }
 }

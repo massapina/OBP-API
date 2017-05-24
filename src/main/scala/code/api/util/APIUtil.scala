@@ -277,7 +277,7 @@ object APIUtil extends MdcLoggable {
 
   def registeredApplication(consumerKey: String): Boolean = {
     Consumers.consumers.vend.getConsumerByConsumerKey(consumerKey) match {
-      case Full(application) => application.isActive
+      case Full(application) => application.isActive.get
       case _ => false
     }
   }
@@ -333,10 +333,15 @@ object APIUtil extends MdcLoggable {
         case _       => ""
       }
       //name of version where the call is implemented) -- S.request.get.view
-      val implementedInVersion = S.request.get.view
+      val implementedInVersion = S.request match {
+        case Full(r) => r.view
+        case _ => ""
+      }
       //(GET, POST etc.) --S.request.get.requestType.method
-      val verb = S.request.get.requestType.method
-
+      val verb = S.request match {
+        case Full(r) => r.requestType.method
+        case _ => ""
+      }
 
       APIMetrics.apiMetrics.vend.saveMetric(userId, S.uriAndQueryString.getOrElse(""), date, duration: Long, userName, appName, developerEmail, consumerId, implementedByPartialFunction, implementedInVersion, verb)
     }
@@ -507,10 +512,10 @@ object APIUtil extends MdcLoggable {
       }
       
       if(parsedDate.isDefined){
-        Full(parsedDate.get)
+        parsedDate
       }
       else if(fallBackParsedDate.isDefined){
-        Full(fallBackParsedDate.get)
+        fallBackParsedDate
       }
       else{
         Failure(FilterDateFormatError)

@@ -33,11 +33,11 @@ class EntitlementTests extends V210ServerSetup with DefaultUsers {
       When("We make the request")
       val requestGet = (v2_1Request / "roles").GET
       val responseGet = makeGetRequest(requestGet)
-      Then("We should get a 400")
-      responseGet.code should equal(400)
+      Then("We must get a 400")
+      responseGet.code must equal(400)
       val error = for { JObject(o) <- responseGet.body; JField("error", JString(error)) <- o } yield error
-      And("We should get a message: " + ErrorMessages.UserNotLoggedIn)
-      error should contain (ErrorMessages.UserNotLoggedIn)
+      And("We must get a message: " + ErrorMessages.UserNotLoggedIn)
+      error must contain (ErrorMessages.UserNotLoggedIn)
 
     }
 
@@ -45,8 +45,8 @@ class EntitlementTests extends V210ServerSetup with DefaultUsers {
       When("We make the request")
       val requestGet = (v2_1Request / "roles").GET <@ (user1)
       val responseGet = makeGetRequest(requestGet)
-      Then("We should get a 200")
-      responseGet.code should equal(200)
+      Then("We must get a 200")
+      responseGet.code must equal(200)
     }
   }
 
@@ -56,11 +56,11 @@ class EntitlementTests extends V210ServerSetup with DefaultUsers {
       When("We make the request")
       val requestGet = (v2_1Request / "banks" / mockBankId.value / "users" / authuser1.userId / "entitlements").GET
       val responseGet = makeGetRequest(requestGet)
-      Then("We should get a 400")
-      responseGet.code should equal(400)
+      Then("We must get a 400")
+      responseGet.code must equal(400)
       val error = for { JObject(o) <- responseGet.body; JField("error", JString(error)) <- o } yield error
-      And("We should get a message: " + ErrorMessages.UserNotLoggedIn)
-      error should contain (ErrorMessages.UserNotLoggedIn)
+      And("We must get a message: " + ErrorMessages.UserNotLoggedIn)
+      error must contain (ErrorMessages.UserNotLoggedIn)
 
     }
 
@@ -68,15 +68,15 @@ class EntitlementTests extends V210ServerSetup with DefaultUsers {
       When("We make the request")
       val requestGet = (v2_1Request / "banks" / mockBankId.value / "users" / authuser1.userId / "entitlements").GET <@ (user1)
       val responseGet = makeGetRequest(requestGet)
-      Then("We should get a 400")
-      responseGet.code should equal(400)
+      Then("We must get a 400")
+      responseGet.code must equal(400)
       val error = for { JObject(o) <- responseGet.body; JField("error", JString(error)) <- o } yield error
       val requiredEntitlements = CanGetEntitlementsForAnyUserAtOneBank ::
         CanGetEntitlementsForAnyUserAtAnyBank::
         Nil
       val requiredEntitlementsTxt = requiredEntitlements.mkString(" or ")
-      And("We should get a message: " + s"$requiredEntitlementsTxt entitlements required")
-      error should contain (UserDoesNotHaveRole + requiredEntitlementsTxt)
+      And("We must get a message: " + s"$requiredEntitlementsTxt entitlements required")
+      error must contain (UserDoesNotHaveRole + requiredEntitlementsTxt)
     }
 
     scenario("We try to get entitlements with credentials - getEntitlementsByBankAndUser") {
@@ -85,8 +85,8 @@ class EntitlementTests extends V210ServerSetup with DefaultUsers {
       And("We make the request")
       val requestGet = (v2_1Request / "banks" / mockBankId.value / "users" / authuser1.userId / "entitlements").GET <@ (user1)
       val responseGet = makeGetRequest(requestGet)
-      Then("We should get a 200")
-      responseGet.code should equal(200)
+      Then("We must get a 200")
+      responseGet.code must equal(200)
     }
   }
 }

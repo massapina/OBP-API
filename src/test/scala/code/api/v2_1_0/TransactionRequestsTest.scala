@@ -12,6 +12,7 @@ import code.api.{APIResponse, ChargePolicy, DefaultUsers, ServerSetupWithTestDat
 import code.bankconnectors.Connector
 import code.fx.fx
 import code.model.{AccountId, AccountRoutingAddress, BankAccount, TransactionRequestId}
+import net.liftweb.common.Full
 import net.liftweb.json.JsonAST.{JField, JObject, JString}
 import net.liftweb.json.Serialization.write
 import net.liftweb.util.Props
@@ -23,7 +24,9 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
 
   def transactionCount(accounts: BankAccount*): Int = {
     accounts.foldLeft(0)((accumulator, account) => {
-      accumulator + Connector.connector.vend.getTransactions(account.bankId, account.accountId).get.size
+      accumulator + (Connector.connector.vend.getTransactions(account.bankId, account.accountId) match {
+        case Full(t) => t.size
+      })
     })
   }
 
@@ -124,33 +127,33 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       def makeCreateTransReqRequestCounterparty: APIResponse = makePostRequest(createTransReqRequest, write(transactionRequestBodyCounterparty))
 
       def checkAllCreateTransReqResBodyField(createTransactionRequestResponse: APIResponse, withChallenge: Boolean): Unit = {
-        Then("we should get a 201 created code")
-        (createTransactionRequestResponse.code) should equal(201)
+        Then("we must get a 201 created code")
+        (createTransactionRequestResponse.code) must equal(201)
 
-        Then("We should have a new transaction id in response body")
+        Then("We must have a new transaction id in response body")
         transRequestId = (createTransactionRequestResponse.body \ "id").values.toString
-        transRequestId should not equal ("")
+        transRequestId must not equal ("")
 
         if (withChallenge) {
-          Then("We should have the INITIATED status in response body")
-          (createTransactionRequestResponse.body \ "status").values.toString should equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
-          Then("The transaction_ids filed should be empty")
-          (createTransactionRequestResponse.body \ "transaction_ids").values.toString should equal("List()")
-          Then("Challenge should have body, this is the with challenge scenario")
-          (createTransactionRequestResponse.body \ "challenge").children.size should not equal (0)
+          Then("We must have the INITIATED status in response body")
+          (createTransactionRequestResponse.body \ "status").values.toString must equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
+          Then("The transaction_ids filed must be empty")
+          (createTransactionRequestResponse.body \ "transaction_ids").values.toString must equal("List()")
+          Then("Challenge must have body, this is the with challenge scenario")
+          (createTransactionRequestResponse.body \ "challenge").children.size must not equal (0)
           challengeId = (createTransactionRequestResponse.body \ "challenge" \ "id").values.toString
-          challengeId should not equal ("")
+          challengeId must not equal ("")
         } else {
-          Then("We should have the COMPLETED status in response body")
-          (createTransactionRequestResponse.body \ "status").values.toString should equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
-          Then("The transaction_ids filed should be not empty")
-          (createTransactionRequestResponse.body \ "transaction_ids").values.toString should not equal ("List()")
-          Then("Challenge should be null, this is the no challenge scenario")
-          (createTransactionRequestResponse.body \ "challenge").children.size should equal(0)
+          Then("We must have the COMPLETED status in response body")
+          (createTransactionRequestResponse.body \ "status").values.toString must equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+          Then("The transaction_ids filed must be not empty")
+          (createTransactionRequestResponse.body \ "transaction_ids").values.toString must not equal ("List()")
+          Then("Challenge must be null, this is the no challenge scenario")
+          (createTransactionRequestResponse.body \ "challenge").children.size must equal(0)
         }
 
-        Then("We should have a new TransactionIds value")
-        (createTransactionRequestResponse.body \ "transaction_ids").values.toString should not equal ("")
+        Then("We must have a new TransactionIds value")
+        (createTransactionRequestResponse.body \ "transaction_ids").values.toString must not equal ("")
 
       }
 
@@ -163,30 +166,30 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       def makeGetTransReqRequest = makeGetRequest(getTransReqRequest)
 
       def checkAllGetTransReqResBodyField(getTransactionRequestResponse: APIResponse, withChellenge: Boolean): Unit = {
-        Then("we should get a 200 created code")
-        (getTransactionRequestResponse.code) should equal(200)
+        Then("we must get a 200 created code")
+        (getTransactionRequestResponse.code) must equal(200)
 
-        And("We should have a new transaction id in response body")
-        (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "id").values.toString should not equal ("")
+        And("We must have a new transaction id in response body")
+        (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "id").values.toString must not equal ("")
 
         if (withChellenge) {
-          And("We should have the INITIATED status in response body")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "status").values.toString should equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
+          And("We must have the INITIATED status in response body")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "status").values.toString must equal(code.transactionrequests.TransactionRequests.STATUS_INITIATED)
 
-          And("Challenge should be not null, this is the no challenge scenario")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "challenge").children.size should not equal (0)
+          And("Challenge must be not null, this is the no challenge scenario")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "challenge").children.size must not equal (0)
 
-          And("We should have be null value for TransactionIds")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "transaction_ids").values.toString should equal("List()")
+          And("We must have be null value for TransactionIds")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "transaction_ids").values.toString must equal("List()")
         } else {
-          And("We should have the COMPLETED status in response body")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "status").values.toString should equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+          And("We must have the COMPLETED status in response body")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "status").values.toString must equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
 
-          And("Challenge should be null, this is the no challenge scenario")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "challenge").children.size should equal(0)
+          And("Challenge must be null, this is the no challenge scenario")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "challenge").children.size must equal(0)
 
-          And("We should have a new TransactionIds value")
-          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "transaction_ids").values.toString should not equal ("")
+          And("We must have a new TransactionIds value")
+          (getTransactionRequestResponse.body \ "transaction_requests_with_charges" \ "transaction_ids").values.toString must not equal ("")
         }
 
       }
@@ -199,16 +202,16 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       def makeGetTransRequest = makeGetRequest(getTransactionRequest)
 
       def checkAllGetTransResBodyField(getTransactionResponse: APIResponse, withChellenge: Boolean): Unit = {
-        Then("we should get a 200 created code")
-        (getTransactionResponse.code) should equal(200)
-        And("we should get the body size is one")
-        (getTransactionResponse.body.children.size) should equal(1)
+        Then("we must get a 200 created code")
+        (getTransactionResponse.code) must equal(200)
+        And("we must get the body size is one")
+        (getTransactionResponse.body.children.size) must equal(1)
         if (withChellenge) {
-          And("we should get None, there is no transaction yet")
-          ((getTransactionResponse.body \ "transactions"\"details").toString contains (discription)) should not equal(true)
+          And("we must get None, there is no transaction yet")
+          ((getTransactionResponse.body \ "transactions"\"details").toString contains (discription)) must not equal(true)
         } else {
-          And("we should get the body discription value is as we set before")
-          ((getTransactionResponse.body \ "transactions"\"details").toString contains (discription)) should equal(true)
+          And("we must get the body discription value is as we set before")
+          ((getTransactionResponse.body \ "transactions"\"details").toString contains (discription)) must equal(true)
         }
       }
 
@@ -228,34 +231,34 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
 
         if (finishedTranscation ) {
           if(transactionRequestTypeInput.equals("FREE_FORM")){
-            Then("FREE_FORM just transfer money to itself, the money should be the same as before ")
-            fromAccountBalance should equal((beforeFromBalance))
-            And("there should now be 2 new transactions in the database")
-            transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore+2)
+            Then("FREE_FORM just transfer money to itself, the money must be the same as before ")
+            fromAccountBalance must equal((beforeFromBalance))
+            And("there must now be 2 new transactions in the database")
+            transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore+2)
           } else if(transactionRequestTypeInput.equals("SANDBOX_TAN")){
             Then("check that the balances have been properly decreased/increased (since we handle that logic for sandbox accounts at least) ")
-            fromAccountBalance should equal((beforeFromBalance - amt))
-            And("the account receiving the payment should have a new balance plus the amount paid")
-            toAccountBalance should equal(beforeToBalance + convertedAmount)
-            And("there should now be 2 new transactions in the database (one for the sender, one for the receiver")
-            transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+            fromAccountBalance must equal((beforeFromBalance - amt))
+            And("the account receiving the payment must have a new balance plus the amount paid")
+            toAccountBalance must equal(beforeToBalance + convertedAmount)
+            And("there must now be 2 new transactions in the database (one for the sender, one for the receiver")
+            transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
           } else{
             Then("check that the balances have been properly decreased/increased (since we handle that logic for sandbox accounts at least) ")
-            fromAccountBalance should equal((beforeFromBalance - amt))
-            And("the account receiving the payment should have a new balance plus the amount paid")
+            fromAccountBalance must equal((beforeFromBalance - amt))
+            And("the account receiving the payment must have a new balance plus the amount paid")
             //TODO for now, sepa, counterparty can not clear the toAccount and toAccount Currency so just test the fromAccount
-            //toAccountBalance should equal(beforeToBalance + convertedAmount)
-            And("there should now be 2 new transactions in the database (one for the sender, one for the receiver")
-            transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore + 2)
+            //toAccountBalance must equal(beforeToBalance + convertedAmount)
+            And("there must now be 2 new transactions in the database (one for the sender, one for the receiver")
+            transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore + 2)
           }
 
         } else {
-          Then("No transaction, it should be the same as before ")
-          fromAccountBalance should equal((beforeFromBalance))
-          And("No transaction, it should be the same as before ")
-          toAccountBalance should equal(beforeToBalance)
-          And("No transaction, it should be the same as before ")
-          transactionCount(fromAccount, toAccount) should equal(totalTransactionsBefore)
+          Then("No transaction, it must be the same as before ")
+          fromAccountBalance must equal((beforeFromBalance))
+          And("No transaction, it must be the same as before ")
+          toAccountBalance must equal(beforeToBalance)
+          And("No transaction, it must be the same as before ")
+          transactionCount(fromAccount, toAccount) must equal(totalTransactionsBefore)
         }
       }
 
@@ -269,17 +272,17 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
       def makeAnswerRequest = makePostRequest(answerRequest, write(answerJson))
 
       def checkAllAnsTransReqBodyFields(ansTransReqResponse: APIResponse, withChellenge: Boolean): Unit = {
-        Then("we should get a 202 created code")
-        (ansTransReqResponse.code) should equal(202)
+        Then("we must get a 202 created code")
+        (ansTransReqResponse.code) must equal(202)
 
-        And("we should get the body sie is 10, the response Json body have 10 Attributes")
-        (ansTransReqResponse.body.children.size) should equal(10)
+        And("we must get the body sie is 10, the response Json body have 10 Attributes")
+        (ansTransReqResponse.body.children.size) must equal(10)
 
-        Then("We should have a new TransactionIds value")
-        (ansTransReqResponse.body \ "transaction_ids").values.toString should not equal ("")
+        Then("We must have a new TransactionIds value")
+        (ansTransReqResponse.body \ "transaction_ids").values.toString must not equal ("")
 
-        Then("We should have the COMPLETED status in response body")
-        (ansTransReqResponse.body \ "status").values.toString should equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
+        Then("We must have the COMPLETED status in response body")
+        (ansTransReqResponse.body \ "status").values.toString must equal(code.transactionrequests.TransactionRequests.STATUS_COMPLETED)
       }
     }
 
@@ -299,12 +302,12 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
         var response = makePostRequest(request, write(helper.transactionRequestBody))
 
 
-        Then("we should get a 400 created code")
-        response.code should equal(400)
+        Then("we must get a 400 created code")
+        response.code must equal(400)
 
-        Then("We should have the error message")
+        Then("We must have the error message")
         val error = for {JObject(o) <- response.body; JField("error", JString(error)) <- o} yield error
-        error should contain(ErrorMessages.UserNotLoggedIn)
+        error must contain(ErrorMessages.UserNotLoggedIn)
 
       }
     }
@@ -321,12 +324,12 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           "owner" / "transaction-request-types" / helper.transactionRequestType / "transaction-requests").POST <@ (user2)
         val response = makePostRequest(request, write(helper.transactionRequestBody))
 
-        Then("we should get a 400 created code")
-        response.code should equal(400)
+        Then("we must get a 400 created code")
+        response.code must equal(400)
 
-        Then("We should have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        Then("We must have the error: " + ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
         val error: String = (response.body \ "error").values.toString
-        error should equal(ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
+        error must equal(ErrorMessages.InsufficientAuthorisationToCreateTransactionRequest)
       }
     }
 
@@ -345,8 +348,8 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           "owner" / "transaction-request-types" / helper.transactionRequestType / "transaction-requests").POST <@ (user3)
         var response = makePostRequest(request, write(helper.transactionRequestBody))
 
-        Then("we should get a 201 created code")
-        response.code should equal(201)
+        Then("we must get a 201 created code")
+        response.code must equal(201)
 
       }
     }
@@ -367,12 +370,12 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
           "owner" / "transaction-request-types" / invalidTransactionRequestType / "transaction-requests").POST <@ (user3)
         var response = makePostRequest(request, write(helper.transactionRequestBody))
 
-        Then("we should get a 400 created code")
-        response.code should equal(400)
+        Then("we must get a 400 created code")
+        response.code must equal(400)
 
-        Then("We should have the error message")
+        Then("We must have the error message")
         val error: List[String] = for {JObject(o) <- response.body; JField("error", JString(error)) <- o} yield error
-        error(0) should include(ErrorMessages.InvalidTransactionRequestType)
+        error(0) must include(ErrorMessages.InvalidTransactionRequestType)
       }
     }
 
@@ -1042,15 +1045,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
     val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
     val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-    Then("we should get a 400")
-    postResult.code should equal(400)
+    Then("we must get a 400")
+    postResult.code must equal(400)
 
-    And("the number of transactions for each account should remain unchanged")
-    totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+    And("the number of transactions for each account must remain unchanged")
+    totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-    And("the balances of each account should remain unchanged")
-    beforeFromBalance should equal(getFromAccount.balance)
-    beforeToBalance should equal(getToAccount.balance)
+    And("the balances of each account must remain unchanged")
+    beforeFromBalance must equal(getFromAccount.balance)
+    beforeToBalance must equal(getToAccount.balance)
   }
 
   scenario("we can't make a payment with a negative amount of money", Payments) {
@@ -1085,15 +1088,15 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
     val payJson = MakePaymentJson(toAccount.bankId.value, toAccount.accountId.value, amt.toString)
     val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-    Then("we should get a 400")
-    postResult.code should equal(400)
+    Then("we must get a 400")
+    postResult.code must equal(400)
 
-    And("the number of transactions for each account should remain unchanged")
-    totalTransactionsBefore should equal(transactionCount(fromAccount, toAccount))
+    And("the number of transactions for each account must remain unchanged")
+    totalTransactionsBefore must equal(transactionCount(fromAccount, toAccount))
 
-    And("the balances of each account should remain unchanged")
-    beforeFromBalance should equal(getFromAccount.balance)
-    beforeToBalance should equal(getToAccount.balance)
+    And("the balances of each account must remain unchanged")
+    beforeFromBalance must equal(getFromAccount.balance)
+    beforeToBalance must equal(getToAccount.balance)
   }
 
   scenario("we can't make a payment to an account that doesn't exist", Payments) {
@@ -1120,14 +1123,14 @@ class TransactionRequestsTest extends ServerSetupWithTestData with DefaultUsers 
     val payJson = MakePaymentJson(bankId.value, "ACCOUNTTHATDOESNOTEXIST232321321", amt.toString)
     val postResult = postTransaction(fromAccount.bankId.value, fromAccount.accountId.value, view, payJson, user1)
 
-    Then("we should get a 400")
-    postResult.code should equal(400)
+    Then("we must get a 400")
+    postResult.code must equal(400)
 
-    And("the number of transactions for the sender's account should remain unchanged")
-    totalTransactionsBefore should equal(transactionCount(fromAccount))
+    And("the number of transactions for the sender's account must remain unchanged")
+    totalTransactionsBefore must equal(transactionCount(fromAccount))
 
-    And("the balance of the sender's account should remain unchanged")
-    beforeFromBalance should equal(getFromAccount.balance)
+    And("the balance of the sender's account must remain unchanged")
+    beforeFromBalance must equal(getFromAccount.balance)
   }
     */
 }

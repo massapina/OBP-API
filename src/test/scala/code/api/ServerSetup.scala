@@ -12,7 +12,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
-You should have received a copy of the GNU Affero General Public License
+You must have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Email: contact@tesobe.com
@@ -42,7 +42,8 @@ import code.util.Helper.MdcLoggable
 trait ServerSetup extends FeatureSpec with SendServerRequests
   with BeforeAndAfterEach with GivenWhenThen
   with BeforeAndAfterAll
-  with ShouldMatchers with MdcLoggable {
+  with MustMatchers
+  with MdcLoggable {
 
   var server = TestServer
   implicit val formats = DefaultFormats.withHints(ShortTypeHints(List()))
