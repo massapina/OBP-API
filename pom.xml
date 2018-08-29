@@ -12,7 +12,7 @@
   <inceptionYear>2011</inceptionYear>
   <properties>
     <scala.version>2.11</scala.version>
-    <scala.compiler>2.11.8</scala.compiler>
+    <scala.compiler>2.11.12</scala.compiler>
     <akka.version>2.5.1</akka.version>
     <akka-streams-kafka.version>0.16</akka-streams-kafka.version>
     <avro.version>1.6.4</avro.version>
@@ -97,7 +97,7 @@
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>connect-json</artifactId>
-      <version>0.10.2.0</version>
+      <version>0.10.2.1</version>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
@@ -214,7 +214,7 @@
     <dependency>
       <groupId>com.tokbox</groupId>
       <artifactId>opentok-server-sdk</artifactId>
-      <version>3.0.0-beta.2</version>
+      <version>3.0.0</version>
       <exclusions>
         <exclusion>
           <groupId>com.fasterxml.jackson.core</groupId>
